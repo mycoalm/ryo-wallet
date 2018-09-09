@@ -1,5 +1,6 @@
-import { app, ipcMain, BrowserWindow, dialog } from "electron"
+import { app, ipcMain, BrowserWindow, Menu, dialog } from "electron"
 import { Backend } from "./modules/backend"
+import menuTemplate from "./menu"
 const portscanner = require("portscanner")
 
 /**
@@ -15,6 +16,7 @@ if (process.env.PROD) {
 
 let mainWindow, backend
 let showConfirmClose = true
+let forceQuit = false
 
 const portInUse = function(port, callback) {
     var server = net.createServer(function(socket) {
@@ -45,17 +47,33 @@ function createWindow() {
     })
 
     mainWindow.on("close", (e) => {
-        if(showConfirmClose) {
-            e.preventDefault()
-            mainWindow.webContents.send("confirmClose")
+        if (process.platform === "darwin") {
+            if (forceQuit) {
+                forceQuit = false
+                if (showConfirmClose) {
+                    e.preventDefault()
+                    mainWindow.show()
+                    mainWindow.webContents.send("confirmClose")
+                } else {
+                    e.defaultPrevented = false
+                }
+            } else {
+                e.preventDefault()
+                mainWindow.hide()
+            }
         } else {
-            e.defaultPrevented = false
+            if (showConfirmClose) {
+                e.preventDefault()
+                mainWindow.webContents.send("confirmClose")
+            } else {
+                e.defaultPrevented = false
+            }
         }
     })
 
     ipcMain.on("confirmClose", (e) => {
         showConfirmClose = false
-        if(backend) {
+        if (backend) {
             backend.quit().then(() => {
                 backend = null
                 app.quit()
@@ -70,7 +88,7 @@ function createWindow() {
         require("crypto").randomBytes(64, (err, buffer) => {
 
             // if err, then we may have to use insecure token generation perhaps
-            if(err) throw err;
+            if (err) throw err;
 
             let config = {
                 port: 12213,
@@ -78,7 +96,7 @@ function createWindow() {
             }
 
             portscanner.checkPortStatus(config.port, "127.0.0.1", (error, status) => {
-                if(status == "closed") {
+                if (status == "closed") {
                     mainWindow.webContents.send("initialize", config)
                     backend = new Backend()
                     backend.init(config)
@@ -105,7 +123,13 @@ function createWindow() {
 
 }
 
-app.on("ready", createWindow)
+app.on("ready", () => {
+    if (process.platform === "darwin") {
+        const menu = Menu.buildFromTemplate(menuTemplate)
+        Menu.setApplicationMenu(menu)
+    }
+    createWindow()
+})
 
 app.on("window-all-closed", () => {
     if (process.platform !== "darwin") {
@@ -116,12 +140,21 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
     if (mainWindow === null) {
         createWindow()
+    } else if (process.platform === "darwin") {
+        mainWindow.show()
     }
 })
 
 app.on("before-quit", () => {
-    if(backend)
-        backend.quit()
+    if (process.platform === "darwin") {
+        forceQuit = true
+    } else {
+        if (backend) {
+            backend.quit().then(() => {
+                mainWindow.close()
+            })
+        }
+    }
 })
 
 app.on("quit", () => {
