@@ -172,6 +172,16 @@ module.exports = function (ctx) {
                 productName: "Ryo Wallet Atom",
                 copyright: "Copyright © 2018 Ryo Currency Project",
 
+                // directories: {
+                //     buildResources: "src-electron/build"
+                // },
+
+                linux: {
+                    target: ["AppImage", "snap", "tar.xz"],
+                    icon: "src-electron/icons/icon_512x512.png",
+                    category: "Finance"
+                },
+
                 mac: {
                     icon: "src-electron/icons/icon.icns",
                     category: "public.app-category.finance"
@@ -182,7 +192,7 @@ module.exports = function (ctx) {
                 },
 
                 extraResources: [
-                    "bin",
+                    "bin"
                 ]
             }
         }

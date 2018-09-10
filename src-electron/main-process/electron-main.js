@@ -43,6 +43,7 @@ function createWindow() {
         height: 600,
         minWidth: 800,
         minHeight: 600,
+        icon: require("path").join(__statics, "icon_512x512.png"),
         useContentSize: true
     })
 
